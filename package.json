@@ -1,0 +1,15 @@
+{
+  "name": "thread-service",
+  "version": "1.0.0",
+  "description": "Kwazo thread posting service",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Stefan Rachev",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.1",
+    "nodemon": "^2.0.16"
+  }
+}
