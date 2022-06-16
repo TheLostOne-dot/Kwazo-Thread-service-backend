@@ -1,11 +1,31 @@
-const express = require('express')
-const app = express()
-const port = 3002
+const express = require("express");
+const cors = require("cors");
+const app = express();
 
-app.get('/', (req, res) => {
-  res.send('Thread service running with nodemon!')
-})
+var corsOptions = {
+  origin: "http://localhost:8081",
+};
 
-app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`)
-})
+app.use(cors(corsOptions));
+
+// parse requests of content-type - application/json
+app.use(express.json());
+
+// parse requests of content-type - application/x-www-form-urlencoded
+app.use(express.urlencoded({ extended: true }));
+
+const db = require("./src/models/index.model");
+db.sequelize.sync();
+
+// simple route
+app.get("/", (req, res) => {
+  res.json({ message: "Post service running!" });
+});
+
+require("./src/routes/post.routes")(app);
+
+// set port, listen for requests
+const PORT = process.env.PORT || 8080;
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}.`);
+});
