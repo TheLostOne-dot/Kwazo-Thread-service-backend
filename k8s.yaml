@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: kwazo-post-database
+type: Opaque
+data:
+  MYSQLDB_DATABASE: cG9zdHNlcnZpY2U=
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kwazo-post
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kwazo-post
+  template:
+    metadata:
+      labels:
+        app: kwazo-post
+        version: IMAGE_LABEL
+    spec:
+      containers:
+      - name: kwazo-post
+        image: ACR_URL/kwazo-post:IMAGE_LABEL         
+        envFrom:
+        - secretRef:
+            name: kwazo-post-database
+        - secretRef:
+            name: kwazo
+        ports:
+        - containerPort: 8080
+        resources: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kwazo-post-service
+spec:
+  ports:
+  - port: 80
+    name: http
+    targetPort: 8080
+  selector:
+    app: kwazo-post

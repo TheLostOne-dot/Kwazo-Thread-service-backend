@@ -1,0 +1,71 @@
+# This is a basic workflow to help you get started with Actions
+
+name: CD
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events but only for the main branch
+  push:
+    branches: [ main ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# Environment variables available to all jobs and steps in this workflow
+env:
+  NAMESPACE: kong
+  SECRET: kwazosecret
+  APP_NAME: kwazo-post
+  
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@main
+    
+    # Connect to Azure Container Registry (ACR)
+    - uses: azure/docker-login@v1
+      with:
+        login-server: ${{ secrets.REGISTRY_NAME }}.azurecr.io
+        username: ${{ secrets.REGISTRY_USERNAME }} 
+        password: ${{ secrets.REGISTRY_PASSWORD }}
+    
+    # Container build and push to a Azure Container Registry (ACR)
+    - run: |
+        docker build . -t ${{ secrets.REGISTRY_NAME }}.azurecr.io/${{ env.APP_NAME }}:${{ github.sha }} -f Dockerfile
+        docker push ${{ secrets.REGISTRY_NAME }}.azurecr.io/${{ env.APP_NAME }}:${{ github.sha }}
+        sed -i'' -e 's/ACR_URL/${{ secrets.REGISTRY_NAME }}.azurecr.io/g' -e 's/AKS_URL/${{ env.REGISTRY_NAME }}.azurecr.io/g' -e 's/IMAGE_LABEL/${{ github.sha }}/g' k8s.yaml
+      working-directory: ./
+    
+    # Set the target Azure Kubernetes Service (AKS) cluster. 
+    - uses: azure/aks-set-context@v1
+      with:
+        creds: '${{ secrets.AZURE_CREDENTIALS }}'
+        cluster-name: ${{ secrets.CLUSTER_NAME }}
+        resource-group: ${{ secrets.CLUSTER_RESOURCE_GROUP }}
+    
+    # Create namespace if doesn't exist
+    - run: |
+        kubectl create namespace ${{ env.NAMESPACE }} --dry-run=client -o json | kubectl apply -f -
+    
+    # Create image pull secret for ACR
+    - uses: azure/k8s-create-secret@v1
+      with:
+        container-registry-url: ${{ secrets.REGISTRY_NAME }}.azurecr.io
+        container-registry-username: ${{ secrets.REGISTRY_USERNAME }}
+        container-registry-password: ${{ secrets.REGISTRY_PASSWORD }}
+        secret-name: ${{ env.SECRET }}
+        namespace: ${{ env.NAMESPACE }}
+        arguments: --force true
+    
+    # Deploy app to AKS
+    - uses: azure/k8s-deploy@v1
+      with:
+        manifests: |
+          ${{ github.workspace }}/k8s.yaml
+        images: |
+          ${{ secrets.REGISTRY_NAME }}.azurecr.io/${{ env.APP_NAME }}:${{ github.sha }}
+        imagepullsecrets: |
+          ${{ env.SECRET }}
+        namespace: ${{ env.NAMESPACE }}
+        
