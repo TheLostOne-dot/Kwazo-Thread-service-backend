@@ -4,10 +4,16 @@ module.exports = (sequelize, Sequelize) => {
     {
       title: {
         type: Sequelize.STRING,
+        allowNull: false
       },
       description: {
         type: Sequelize.STRING,
+        allowNull: false
       },
+      username: {
+        type: Sequelize.STRING,
+        allowNull: false
+      }
     },
     {
       updatedAt: false,

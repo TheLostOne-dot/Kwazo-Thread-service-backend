@@ -1,21 +1,36 @@
 const db = require("../models/index.model");
+const jwt = require("jsonwebtoken");
+const amqp = require("amqplib/callback_api");
 const Post = db.post;
 const Op = db.Sequelize.Op;
 
 // Create and Save a new Post
 exports.create = (req, res) => {
   // Validate request
-  if (!req.body.title) {
+  if (!req.body.title || !req.body.description) {
     res.status(400).send({
       message: "Content can not be empty!",
     });
     return;
   }
+  //Username from cookie
+  if (!req.headers.cookie) {
+    res.clearCookie("access_token");
+    res.status(401).send({
+      message: "Please login or create an account!",
+    });
+    return;
+  }
+  var token = req.headers.cookie;
+  var test = jwt.verify(token.replace("access_token=", ""), process.env.JWT_SECRET);
+
   // Create a Post
   const post = {
     title: req.body.title,
     description: req.body.description,
+    username: test.username,
   };
+
   // Save Post in the database
   Post.create(post)
     .then((data) => {
@@ -90,24 +105,56 @@ exports.update = (req, res) => {
 // Delete a Post with the specified id in the request
 exports.delete = (req, res) => {
   const id = req.params.id;
-  Post.destroy({
-    where: { id: id },
+  Post.findOne({
+    where: {
+      id: id,
+    },
   })
-    .then((num) => {
-      if (num == 1) {
-        res.send({
-          message: "Post was deleted successfully!",
+    .then((post) => {
+      amqp.connect(process.env.AMQP_URL, function (error0, connection) {
+        if (error0) {
+          throw error0;
+        }
+        connection.createChannel(function (error1, channel) {
+          if (error1) {
+            throw error1;
+          }
+          const exchange = "kwazo_exchange";
+          const key = "post-deleted.comment";
+
+          channel.assertExchange(exchange, "topic", {
+            durable: false,
+          });
+          channel.publish(exchange, key, Buffer.from(post.id.toString()));
+          console.log(" [x] Sent %s:'%s'", key, post.id);
         });
-      } else {
-        res.send({
-          message: `Cannot delete Post with id=${id}. Maybe Post was not found!`,
-        });
-      }
-    })
-    .catch((err) => {
-      res.status(500).send({
-        message: "Could not delete Post with id=" + id,
+
+        setTimeout(function () {
+          connection.close();
+          // process.exit(0);
+        }, 500);
       });
+    })
+    .then(() => {
+      Post.destroy({
+        where: { id: id },
+      })
+        .then((num) => {
+          if (num == 1) {
+            res.send({
+              message: "Post was deleted successfully!",
+            });
+          } else {
+            res.send({
+              message: `Cannot delete Post with id=${id}. Maybe Post was not found!`,
+            });
+          }
+        })
+        .catch((err) => {
+          res.status(500).send({
+            message: "Could not delete Post with id=" + id,
+          });
+        });
     });
 };
 
@@ -122,6 +169,54 @@ exports.deleteAll = (req, res) => {
     })
     .catch((err) => {
       res.status(500).send({
+        message: err.message || "Some error occurred while removing all posts.",
+      });
+    });
+};
+
+exports.deleteByUsername = (username) => {
+  var condition = username
+    ? { username: { [Op.like]: `%${username}%` } }
+    : null;
+  Post.findAll({ where: condition })
+    .then((data) => {
+      console.log(data);
+      data.forEach((post) => {
+        amqp.connect(process.env.AMQP_URL, function (error0, connection) {
+          if (error0) {
+            throw error0;
+          }
+          connection.createChannel(function (error1, channel) {
+            if (error1) {
+              throw error1;
+            }
+            const exchange = "kwazo_exchange";
+            const key = "post-deleted.comment";
+
+            channel.assertExchange(exchange, "topic", {
+              durable: false,
+            });
+            channel.publish(exchange, key, Buffer.from(post.id.toString()));
+            console.log(" [x] Sent %s:'%s'", key, post.id);
+          });
+
+          setTimeout(function () {
+            connection.close();
+            // process.exit(0);
+          }, 500);
+        });
+      });
+    })
+    .then(() => {
+      Post.destroy({
+        where: condition,
+        truncate: false,
+      }).then((nums) => {
+        console.log({ message: `${nums} Posts were deleted successfully!` });
+      });
+    })
+    .catch((err) => {
+      console.log({
         message: err.message || "Some error occurred while removing all posts.",
       });
     });
