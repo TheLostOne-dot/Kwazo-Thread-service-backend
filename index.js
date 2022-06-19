@@ -29,7 +29,7 @@ require("./src/routes/post.routes")(app);
 
 const key = "*.post";
 
-amqp.connect("amqp://localhost", function (error0, connection) {
+amqp.connect(process.env.AMQP_URL, function (error0, connection) {
   if (error0) {
     throw error0;
   }
