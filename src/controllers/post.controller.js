@@ -14,14 +14,14 @@ exports.create = (req, res) => {
     return;
   }
   //Username from cookie
-  if (!req.headers.cookie) {
-    res.clearCookie("access_token");
+  if (!req.cookies.access_token) {
+    // res.clearCookie("access_token");
     res.status(401).send({
       message: "Please login or create an account!",
     });
     return;
   }
-  var token = req.headers.cookie;
+  var token = req.cookies.access_token;
   var test = jwt.verify(token.replace("access_token=", ""), process.env.JWT_SECRET);
 
   // Create a Post
