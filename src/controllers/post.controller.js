@@ -45,6 +45,13 @@ exports.create = (req, res) => {
 
 // Retrieve all Posts from the database.
 exports.findAll = (req, res) => {
+  if (!req.headers.cookie) {
+    res.clearCookie("access_token");
+    res.status(401).send({
+      message: "Please login or create an account!",
+    });
+    return;
+  }
   const title = req.query.title;
   var condition = title ? { title: { [Op.like]: `%${title}%` } } : null;
   Post.findAll({ where: condition })
@@ -60,6 +67,13 @@ exports.findAll = (req, res) => {
 
 // Find a single Post with an id
 exports.findOne = (req, res) => {
+  if (!req.headers.cookie) {
+    res.clearCookie("access_token");
+    res.status(401).send({
+      message: "Please login or create an account!",
+    });
+    return;
+  }
   const id = req.params.id;
   Post.findByPk(id)
     .then((data) => {
@@ -80,6 +94,13 @@ exports.findOne = (req, res) => {
 
 // Update a Post by the id in the request
 exports.update = (req, res) => {
+  if (!req.headers.cookie) {
+    res.clearCookie("access_token");
+    res.status(401).send({
+      message: "Please login or create an account!",
+    });
+    return;
+  }
   const id = req.params.id;
   Post.update(req.body, {
     where: { id: id },
@@ -104,6 +125,13 @@ exports.update = (req, res) => {
 
 // Delete a Post with the specified id in the request
 exports.delete = (req, res) => {
+  if (!req.headers.cookie) {
+    res.clearCookie("access_token");
+    res.status(401).send({
+      message: "Please login or create an account!",
+    });
+    return;
+  }
   const id = req.params.id;
   Post.findOne({
     where: {
@@ -160,6 +188,13 @@ exports.delete = (req, res) => {
 
 // Delete all Posts from the database.
 exports.deleteAll = (req, res) => {
+  if (!req.headers.cookie) {
+    res.clearCookie("access_token");
+    res.status(401).send({
+      message: "Please login or create an account!",
+    });
+    return;
+  }
   Post.destroy({
     where: {},
     truncate: false,
@@ -175,6 +210,13 @@ exports.deleteAll = (req, res) => {
 };
 
 exports.deleteByUsername = (username) => {
+  if (!req.headers.cookie) {
+    res.clearCookie("access_token");
+    res.status(401).send({
+      message: "Please login or create an account!",
+    });
+    return;
+  }
   var condition = username
     ? { username: { [Op.like]: `%${username}%` } }
     : null;
