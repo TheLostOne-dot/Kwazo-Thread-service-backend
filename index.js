@@ -6,7 +6,8 @@ const app = express();
 const amqp_server = require("./src/service/amqp_rpc_server")
 
 var corsOptions = {
-  origin: "http://localhost:8081",
+  origin: ["http://localhost:4200"],
+  credentials: true
 };
 
 app.use(cors(corsOptions));
